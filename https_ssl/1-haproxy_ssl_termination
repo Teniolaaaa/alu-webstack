@@ -1,29 +1,27 @@
-# HAProxy configuration for SSL termination (task 1)
-# Replace /etc/letsencrypt/live/www.example.com/haproxy.pem with your actual cert+key PEM
-# Make sure the PEM contains privkey + fullchain concatenated (certbot/letsencrypt can provide)
+# 1-haproxy_ssl_termination
+# HAProxy config to terminate SSL for www.teniola.me
+
 global
-    log /dev/log local0
-    maxconn 4096
+    log stdout format raw local0
     daemon
+    maxconn 256
 
 defaults
-    log     global
-    mode    http
-    option  httplog
-    option  dontlognull
-    timeout connect 5000
-    timeout client  50000
-    timeout server  50000
+    log global
+    mode http
+    option httplog
+    timeout connect 5000ms
+    timeout client 50000ms
+    timeout server 50000ms
 
 frontend https_front
-    bind *:443 ssl crt /etc/letsencrypt/live/www.holberton.online/haproxy.pem
+    bind *:443 ssl crt /etc/letsencrypt/live/www.teniola.me/fullchain.pem key /etc/letsencrypt/live/www.teniola.me/privkey.pem
     mode http
-    option forwardfor
-    default_backend web_back
+    default_backend web_servers
 
-backend web_back
+backend web_servers
     mode http
     balance roundrobin
-    # Replace the IPs below with your actual web server IPs if different
-    server web-01 13.220.103.184:80 check
-    server web-02 3.85.233.7:80 check
+    server web01 13.220.103.184:80 check
+    server web02 3.85.233.7:80 check
+
