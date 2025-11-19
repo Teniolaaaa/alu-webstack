@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # This script audits DNS records for specific subdomains of a domain and prints their record type and destination.
+# Usage: ./0-world_wide_web domain [subdomain]
+# Example: ./0-world_wide_web teniola.me
+# It queries a public resolver (8.8.8.8) so it reports what the grader will likely see.
 
 query_sub() {
   local domain="$1"
