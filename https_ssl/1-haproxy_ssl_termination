@@ -1,27 +1,36 @@
-# 1-haproxy_ssl_termination
-# HAProxy config to terminate SSL for www.teniola.me
+# HAProxy configuration for SSL termination on port 443
+# This file (1-haproxy_ssl_termination) is intended to be /etc/haproxy/haproxy.cfg on lb-01
+# Ensure combined PEM exists at: /etc/letsencrypt/live/www.teniola.me/haproxy.pem
 
 global
-    log stdout format raw local0
+    log /dev/log local0
+    pidfile /run/haproxy.pid
+    maxconn 4096
+    user haproxy
+    group haproxy
     daemon
-    maxconn 256
 
 defaults
-    log global
-    mode http
-    option httplog
-    timeout connect 5000ms
-    timeout client 50000ms
-    timeout server 50000ms
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+    option  forwardfor except 127.0.0.0/8
 
 frontend https_front
-    bind *:443 ssl crt /etc/letsencrypt/live/www.teniola.me/fullchain.pem key /etc/letsencrypt/live/www.teniola.me/privkey.pem
+    bind *:443 ssl crt /etc/letsencrypt/live/www.teniola.me/haproxy.pem
     mode http
-    default_backend web_servers
+    option httplog
+    http-request set-header X-Forwarded-Proto https
+    default_backend web_back
 
-backend web_servers
+backend web_back
     mode http
     balance roundrobin
-    server web01 13.220.103.184:80 check
-    server web02 3.85.233.7:80 check
-
+    option httpchk GET /
+    http-check expect status 200
+    server web-01 13.220.103.184:80 check
+    server web-02 3.85.233.7:80 check

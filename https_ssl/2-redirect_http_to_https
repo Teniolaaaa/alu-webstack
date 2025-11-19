@@ -1,14 +1,43 @@
-# 2-redirect_http_to_https
-# HAProxy config to redirect all HTTP traffic to HTTPS
+# HAProxy configuration redirecting HTTP -> HTTPS (301) and terminating SSL on 443
+# This file (2-redirect_http_to_https) is intended to be /etc/haproxy/haproxy.cfg on lb-01
+# Ensure combined PEM exists at: /etc/letsencrypt/live/www.teniola.me/haproxy.pem
+
+global
+    log /dev/log local0
+    pidfile /run/haproxy.pid
+    maxconn 4096
+    user haproxy
+    group haproxy
+    daemon
+
+defaults
+    log     global
+    mode    http
+    option  httplog
+    option  dontlognull
+    timeout connect 5000
+    timeout client  50000
+    timeout server  50000
+    option  forwardfor except 127.0.0.0/8
 
 frontend http_front
     bind *:80
     mode http
-    redirect scheme https code 301 if !{ ssl_fc }
+    option httplog
+    # Transparent 301 redirect to same host but https
+    http-request redirect scheme https code 301
 
-backend web_servers
+frontend https_front
+    bind *:443 ssl crt /etc/letsencrypt/live/www.teniola.me/haproxy.pem
+    mode http
+    option httplog
+    http-request set-header X-Forwarded-Proto https
+    default_backend web_back
+
+backend web_back
     mode http
     balance roundrobin
-    server web01 13.220.103.184:80 check
-    server web02 3.85.233.7:80 check
-
+    option httpchk GET /
+    http-check expect status 200
+    server web-01 13.220.103.184:80 check
+    server web-02 3.85.233.7:80 check

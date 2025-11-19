@@ -1,29 +1,52 @@
 #!/usr/bin/env bash
-# Script to display DNS information about domain subdomains
+# This script audits DNS records for specific subdomains of a domain and prints their record type and destination.
 
-# Function to get record type and IP for a subdomain
-get_subdomain_info() {
-    local domain=$1
-    local subdomain=$2
-    local result
-    result=$(dig $subdomain.$domain +short)
-    if [[ -n $result ]]; then
-        echo "The subdomain $subdomain is a A record and points to $result"
-    else
-        echo "The subdomain $subdomain does not exist or has no A record"
+query_sub() {
+  local domain="$1"
+  local sub="$2"
+  local fq="${sub}.${domain}"
+
+  # Prefer a direct A lookup against a public resolver to avoid local cache/formatting issues
+  local dest record answer
+  dest=$(dig +short "${fq}" A @8.8.8.8 | head -n1)
+
+  if [ -n "${dest}" ]; then
+    record="A"
+    echo "The subdomain ${sub} is a ${record} record and points to ${dest}"
+    return
+  fi
+
+  # Fallback: try any answer and parse it (handles non-A records)
+  answer=$(dig +nocmd "${fq}" any +noall +answer | head -n1)
+  if [ -n "${answer}" ]; then
+    record=$(echo "${answer}" | awk '{for(i=1;i<=NF;i++) if($i=="IN"){print $(i+1); exit}}')
+    dest=$(echo "${answer}" | awk '{print $NF}')
+    if [ -n "${record}" ] && [ -n "${dest}" ]; then
+      echo "The subdomain ${sub} is a ${record} record and points to ${dest}"
+      return
     fi
+  fi
+
+  # No records found
+  echo "The subdomain ${sub} has no DNS record (NOT_FOUND)"
 }
 
-domain=$1
-subdomain=$2
+main() {
+  local domain="$1"
+  local sub="$2"
 
-# If only domain is provided, check all 4 subdomains
-if [[ -z $subdomain ]]; then
-    for sd in www lb-01 web-01 web-02; do
-        get_subdomain_info $domain $sd
+  if [ -z "$domain" ]; then
+    echo "Usage: $0 domain [subdomain]"
+    exit 1
+  fi
+
+  if [ -z "$sub" ]; then
+    for s in www lb-01 web-01 web-02; do
+      query_sub "$domain" "$s"
     done
-else
-    # If domain + subdomain provided, check only that one
-    get_subdomain_info $domain $subdomain
-fi
+  else
+    query_sub "$domain" "$sub"
+  fi
+}
 
+main "$@"
