@@ -1,5 +1,5 @@
 # HAProxy configuration for SSL termination on port 443
-# This file (1-haproxy_ssl_termination) is intended to be /etc/haproxy/haproxy.cfg on lb-01
+# Drop this file as /etc/haproxy/haproxy.cfg on the LB (or copy it there via the deploy script)
 # Ensure combined PEM exists at: /etc/letsencrypt/live/www.teniola.me/haproxy.pem
 
 global
@@ -9,6 +9,7 @@ global
     user haproxy
     group haproxy
     daemon
+    tune.ssl.default-dh-param 2048
 
 defaults
     log     global
